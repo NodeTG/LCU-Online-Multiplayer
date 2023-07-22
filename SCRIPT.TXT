@@ -1,0 +1,73 @@
+; Loading script
+loading
+
+; Activating script
+activating
+
+;  LEVEL SCRIPTS
+level
+level2	; General setup script, disabling gizmos which aren't needed yet etc.
+;level3  ; Spawns cats and other characters if their tiles are loaded, destroys them if not
+;level4  ; This governs vehicle spawns in the police station	-	TEMP DISABLED
+;level5  ; Used for the satellite buildit replacements on top of the police building
+level8  ; temp bank sound fx. move to tile when tile streams...
+;
+;
+;	SlowMo scripts
+level6		;	SloMo script - needs to be moved to its tile once the script command is fixed
+level7		;     SloMo for board hit in SF_Residential_0920 & 1020
+level9		;	slowmo for NYBeach board hit
+;
+
+level10		; Player In Car Speech Script
+
+; [rthomas] Moved to activating script
+;level_cameos ; Control cameo levels per platform
+
+;
+; TEMP Build Point Prototype
+;level11	;	RC Car control SF_Residential_1021
+;level12	;	RC Car control SF_Docks0818
+;level13 ;	SF_Docks Train mini-puzzle script
+;
+;
+; MISSION CHARACTER SCRIPTS
+KillOffScreen
+SM20_AttackDoor
+SM20_FarmFighter
+SideMission_Robber_atm_a
+CarChase_Heart_UI		;;	Needed for Act 1 - DO NOT REMOVE
+FighterFall_KillOffScreen	;;	Needed throughout Act 1 - 4   DO NOT REMOVE
+KillOffScreenOrNoMutex		;; For characters like Quiang when a side-mission is started nearby to him.
+;
+; MECHANICS
+;alien
+;alien_secret
+SecretRobber_a 	; wiretap character script
+SecretRobber_b 	; wiretap character script
+;
+; TEST
+;level26	;	test parkour use in city
+;level27	;	prototype prompt
+;level28	;	traffic density test
+;level29		;	flee test
+;level30	; 	Generic test
+
+; For fleeing robbers
+robber_mute_flee_chat
+robber_flee_chat
+fighter_chat
+
+; For player
+Player_Heart_UI
+
+; For released horses
+Horse_Release
+
+;Generic release - when character.Release(); isn't appropriate because it needs to remain stationary and made continue playing certain anims
+Generic_Character_Release
+
+; Manage flags - turn off collision unless player is close
+CharacterManagaFlags
+
+level99

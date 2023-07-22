@@ -1,0 +1,949 @@
+WorldLevel wlCity("Lego_City");
+
+Global Character cPlayer1;
+Global Character cPlayer2;
+
+Job jAct4("Flow_Setup.Act_4");
+Job jAct3("Flow_Setup.Act_3");
+
+Character cMarkerChar;
+
+CityArray caChars;
+CityArray caAnimStates;
+CityArray caPrevPositions;
+CityArray caNewPositions;
+CityArray caLerpSteps;
+CityArray caLerpStages;
+CityArray caTickCounters;
+CityArray caVehicles;
+CityArray caVehicleStates;
+
+Job jVehicleState("SuperBuild_Saves.IS_Space_Centre_Island.3323_Shuttle");
+jVehicleState.SetValue("nState", 1000);
+Number nVehicleState(0);
+
+
+State Base()
+{
+    // Code in a Conditions block is executed repeatadly in an infinite loop.
+    Conditions
+    {
+		if (PlayerPressedButton("L3")) // ignore this -> was used for debugging purposes to ensure the mod is running and active
+        {
+            cPlayer1.SetHealth(#Minus, 1);
+        };
+
+        if (PlayerPressedButton("L3") and cPlayer1.IsSkydiving()) // i don't remember why this is here
+        {
+            cPlayer1.EndSkydive();
+        };
+
+
+        // Get player vehicle and rotation information, then send to python client
+        if (cPlayer1.GetVehicle())
+        {
+            Vehicle vTemp;
+            Text tVehicleClass;
+        
+            vTemp = cPlayer1.GetVehicle();
+            tVehicleClass = vTemp.GetModelName();
+        
+            // TODO: boats
+            // thank you to the random lcu dev who made most of this large if-statement for me
+            if 		( tVehicleClass == "POLICE_CHOPPER" )		        {	nVehicleState = 4;	}
+            elseif	( tVehicleClass == "AIRCRAFT_HERA" )		        {	nVehicleState = 5;	}
+            elseif	( tVehicleClass == "FIRE_CAMEL" )			        {	nVehicleState = 6;	}
+            elseif	( tVehicleClass == "POLICE_RESPONDER" )		        {	nVehicleState = 7;	}
+            elseif	( tVehicleClass == "AIRCRAFT_CLOUD" )		        {	nVehicleState = 8;	}
+            elseif	( tVehicleClass == "AIRCRAFT_KONGAMATO" )	        {	nVehicleState = 9;	}
+            elseif	( tVehicleClass == "UBER_POSEIDON" )		        {	nVehicleState = 1;	}
+            elseif	( tVehicleClass == "POLICE_SKYBRINGER" )	        {	nVehicleState = 10;	}
+            elseif	( tVehicleClass == "HOSPITAL_SWOOPER" )		        {	nVehicleState = 11;	}
+            elseif	( tVehicleClass == "AIRCRAFT_UFO" )			        {	nVehicleState = 12;	}
+            elseif	( tVehicleClass == "AIRCRAFT_JUPITER" )		        {	nVehicleState = 13;	}
+            elseif	( tVehicleClass == "UBER_TEMPEST" )			        {	nVehicleState = 14;	}
+            elseif	( tVehicleClass == "2016_POLICE_GUARDIAN" )	        {	nVehicleState = 2;	}
+            elseif	( tVehicleClass == "CIVIC_TAXICAB" )	            {	nVehicleState = 15;	} 
+            elseif	( tVehicleClass == "CIVIC_EPONA" )	                {	nVehicleState = 16;	} 
+            elseif	( tVehicleClass == "MUSCLECARS_NARYM_MISSION" )	    {	nVehicleState = 17;	} 
+            else { nVehicleState = 1; };
+        
+            // Check if player is actually driving, or if they are a passenger
+            if (!vTemp.GetDriver())
+            {
+                nVehicleState = 0;
+            };
+
+            if (nVehicleState != jVehicleState.GetValue("nState"))
+            {
+                Number nRot;
+                nRot = cPlayer1.GetDirection();
+                nRot = (nRot / 65535) * 360;
+                jVehicleState.SetValue("nState", (nVehicleState*1000)+nRot);
+            };
+        }
+        else
+        {
+            nVehicleState = 0;
+            Number nRot;
+            nRot = cPlayer1.GetDirection();
+            nRot = (nRot / 65535) * 360;
+            jVehicleState.SetValue("nState", (nVehicleState*1000)+nRot);
+        };
+
+
+        if (jAct3.GetValue("Act3_Stage") != 1001)
+        {
+            Number x;
+            Number y;
+            Number z;
+            Number c;
+
+            Number pid; // player id
+            Number cmd; // what type of data is being received
+            Number cmd_data; // the data being received
+
+            x = jAct4.GetValue("Act4_Mission");
+            y = jAct4.GetValue("Act4_Stage");
+            z = jAct3.GetValue("Act3_Mission");
+            c = jAct3.GetValue("Act3_Stage");
+
+            x = (x / 1000) - 2000;
+            y = (y / 1000) - 2000;
+            z = (z / 1000) - 2000;
+
+
+            // Here's some cursed wizardry to split an integer into 3 parts
+            jAct3.SetValue("Act3_Stage", c/10000);
+            pid = jAct3.GetValue("Act3_Stage");
+
+            jAct3.SetValue("Act3_Stage", (c/1000) - (pid*10));
+            cmd = jAct3.GetValue("Act3_Stage");
+
+            jAct3.SetValue("Act3_Stage", (c) - ((cmd*1000)+(pid*10000)));
+            cmd_data = jAct3.GetValue("Act3_Stage");
+
+
+            // This section here is for "system commands", which are not currently implemented.
+            // These would be accessed through the server application to move players around
+            // and interact with them in various ways.
+            if (cmd == 4)
+            {
+                if (cmd_data == 0)
+                {
+                    cPlayer1.Kill();
+                }
+                elseif (cmd_data == 1)
+                {
+                    Vehicle vTemp;
+                    Position pTemp;
+                    Number nTemp;
+                    pTemp = cPlayer1.GetPosition();
+                    nTemp = cPlayer1.GetDirection();
+                    vTemp = CreateAiVehicle("Hero", "Enforcer", pTemp, nTemp);
+                    cPlayer1.SetVehicle(vTemp, #Driver);
+                }
+                elseif (cmd_data == 2)
+                {
+                    Vehicle vTemp;
+                    Position pTemp;
+                    Number nTemp;
+                    pTemp = cPlayer1.GetPosition();
+                    nTemp = cPlayer1.GetDirection();
+                    vTemp = CreateAiVehicle("2016_Guardian", "Enforcer", pTemp, nTemp);
+                    cPlayer1.SetVehicle(vTemp, #Driver);
+                }
+                elseif (cmd_data == 3)
+                {
+                    Vehicle vTemp;
+                    Position pTemp;
+                    Number nTemp;
+                    pTemp = cPlayer1.GetPosition();
+                    nTemp = cPlayer1.GetDirection();
+                    vTemp = CreateAiVehicle("Arowana", "Naval", pTemp, nTemp);
+                    cPlayer1.SetVehicle(vTemp, #Driver);
+                }
+                elseif (cmd_data == 4)
+                {
+                    FadeScreen(true);
+                }
+                elseif (cmd_data == 5)
+                {
+                    FadeScreen(false);
+                }
+                elseif (cmd_data == 6)
+                {
+                    Position pMarkerPos(x,y,z);
+
+                    cMarkerChar = CreateAiCharacter("FrankHoney", "Special", pMarkerPos, 0);
+                    cMarkerChar.SetInvulnerable(true);
+                    cMarkerChar.SetAiOverride(true);
+                    cMarkerChar.LockInPlace(true);
+                    SetCharacterFlags(Character=cMarkerChar, #DontPush, #NoTerrain, #IgnoreGravity);
+
+                    SetObjectiveMarker(cMarkerChar, 0.1, true, true);
+                    cMarkerChar.UI_Map_SetCharacterActive(true);
+                }
+                elseif (cmd_data == 7)
+                {
+                    SetObjectiveMarker(cMarkerChar, 0.1, false, false);
+                    cMarkerChar.UI_Map_SetCharacterActive(false);
+                    cMarkerChar.Kill();
+                }
+                elseif (cmd_data == 8)
+                {
+                    Position pSkydivePos(x,y+250,z);
+
+                    SetParachuteDeployHeight(40);
+                    LoadSkydiveSettings("City");
+
+                    if ( cPlayer1.GetVehicle() ) { cPlayer1.ClearVehicle(); wait(0.5); };
+
+                    cPlayer1.Teleport(pSkydivePos, 0);
+                    wait(0.5);
+                    cPlayer1.StartSkydiveMidfall();
+                }
+                elseif (cmd_data == 9)
+                {
+                    cPlayer1.LockInPlace(true, "idle");
+                }
+                elseif (cmd_data == 10)
+                {
+                    cPlayer1.LockInPlace(false);
+                }
+                elseif (cmd_data == 11)
+                {
+                    UI_ShowHUD(false);
+                    UI_ShowPlayerHUD(false);
+                }
+                elseif (cmd_data == 12)
+                {
+                    UI_ShowHUD(true);
+                    UI_ShowPlayerHUD(true);
+                }
+                elseif (cmd_data == 13)
+                {
+                    if (cPlayer1.GetVehicle())
+                    {
+                        Vehicle vToDelete;
+                        vToDelete = cPlayer1.GetVehicle();
+                        vToDelete.Destroy();
+                    };
+                };
+            };
+
+
+            // The following code was originally split off into a function,
+            // but doing so resulted in the most abnormal and unexplainable bugs
+            // I've ever had to debug, where changing disguise would cause the values
+            // read from Act3_Stage to be corrupted(?). I can't even begin to describe how
+            // absurdly annoying it was to figure out. The code is messier now, but as long as it
+            // works, that's all I care about.
+
+            Position pPosition(x,y,z);
+            Number nPid(pid);
+            Number nCmd(cmd);
+            Number nCmdData(cmd_data);
+
+            if (nCmd == 0)
+            {
+                // Position + Rotation update
+
+                Number nRotation;
+                nRotation = (nCmdData / 360) * 65535;
+
+                Position pTemp;
+                pTemp = caNewPositions.Get(nPid);
+                caPrevPositions.Set(nPid, pTemp);
+                caNewPositions.Set(nPid, pPosition);
+
+                Number nFrameCount;
+                Number nNewStep;
+                nFrameCount = caTickCounters.Get(nPid);
+                nNewStep = 1 / nFrameCount;
+                caLerpSteps.Set(nPid, nNewStep);
+                caLerpStages.Set(nPid, 0);
+                caTickCounters.Set(nPid, 1);
+
+                Character cTemp;
+                cTemp = caChars.Get(nPid);
+                cTemp.Teleport(pTemp, nRotation);
+                caChars.Set(nPid, cTemp);
+            }
+            
+            elseif (nCmd == 1)
+            {
+                // Position + Animation update
+
+                Position pTemp;
+                pTemp = caNewPositions.Get(nPid);
+                caPrevPositions.Set(nPid, pTemp);
+                caNewPositions.Set(nPid, pPosition);
+
+                Number nFrameCount;
+                Number nNewStep;
+                nFrameCount = caTickCounters.Get(nPid);
+                nNewStep = 1 / nFrameCount;
+                caLerpSteps.Set(nPid, nNewStep);
+                caLerpStages.Set(nPid, 0);
+                caTickCounters.Set(nPid, 1);
+
+                Character cTemp;
+                cTemp = caChars.Get(nPid);
+                cTemp.Teleport(pTemp);
+
+                Text tAnimName;
+                tAnimName = GetAnimation(nCmdData);
+                caAnimStates.Set(nPid, tAnimName);
+                cTemp.PlayContextAnimation(tAnimName, -1);
+
+                caChars.Set(nPid, cTemp);
+            }
+            
+            elseif (nCmd == 2)
+            {
+                // Position + Disguise update
+
+                Position pTemp;
+                pTemp = caNewPositions.Get(nPid);
+                caPrevPositions.Set(nPid, pTemp);
+                caNewPositions.Set(nPid, pPosition);
+
+                Number nFrameCount;
+                Number nNewStep;
+                nFrameCount = caTickCounters.Get(nPid);
+                nNewStep = 1 / nFrameCount;
+                caLerpSteps.Set(nPid, nNewStep);
+                caLerpStages.Set(nPid, 0);
+                caTickCounters.Set(nPid, 1);
+
+                Character cTemp;
+                cTemp = caChars.Get(nPid);
+
+                Number nRotation;
+                nRotation = cTemp.GetDirection();
+
+                Text tDisguiseName;
+                Text tDisguiseClass;
+                tDisguiseName = GetDisguiseName(nPid, nCmdData);
+                tDisguiseClass = GetDisguiseClass(nPid, nCmdData);
+
+                cTemp.Kill();
+                cTemp = CreateAiCharacter(tDisguiseName, tDisguiseClass, pTemp, nRotation);
+                cTemp.SetInvulnerable(true);
+                cTemp.SetAiOverride(true);
+                cTemp.LockInPlace(true);
+                SetCharacterFlags(Character=cTemp, #DontPush, #NoTerrain, #IgnoreGravity);
+
+                Text tAnimName;
+                tAnimName = caAnimStates.Get(nPid);
+                cTemp.PlayContextAnimation(tAnimName, -1);
+
+                PlaySFX(sfx="SwChar", TargetCharacter=cTemp);
+                caChars.Set(nPid, cTemp);
+            }
+            
+            elseif (nCmd == 3)
+            {
+                // Position + Vehicle update
+
+                Position pTemp;
+                pTemp = caNewPositions.Get(nPid);
+                caPrevPositions.Set(nPid, pTemp);
+                caNewPositions.Set(nPid, pPosition);
+
+                Number nFrameCount;
+                Number nNewStep;
+                nFrameCount = caTickCounters.Get(nPid);
+                nNewStep = 1 / nFrameCount;
+                caLerpSteps.Set(nPid, nNewStep);
+                caLerpStages.Set(nPid, 0);
+                caTickCounters.Set(nPid, 1);
+
+                Character cTemp;
+                cTemp = caChars.Get(nPid);
+                cTemp.Teleport(pTemp);
+                caChars.Set(nPid, cTemp);
+
+                Vehicle vTemp;
+                vTemp = caVehicles.Get(nPid);
+                vTemp.Destroy();
+                
+                if (nCmdData != 0)
+                {
+                    Number nRot;
+                    nRot = cTemp.GetDirection();
+
+                    Text tName;
+                    Text tClass;
+
+                    tName = GetVehicleName(nCmdData);
+                    tClass = GetVehicleClass(nCmdData);
+
+                    vTemp = CreateAiVehicle(tName, tClass, pTemp, nRot);
+                    vTemp.ForceMaxDetail(true);
+                    vTemp.SetSeatLocked(#Driver, true);
+                    vTemp.SetInvulnerable(true);
+                }
+
+                caVehicles.Set(nPid, vTemp);
+                caVehicleStates.Set(nPid, nCmdData);
+            };
+
+            jAct3.SetValue("Act3_Stage", 1001);
+        };
+     
+        if (!PlayerHeldButton("R3")) // holding R3 temporarily disables smoothing, for testing purposes
+        {
+            HandlePlayerLerp(0);
+            HandlePlayerLerp(1);
+            HandlePlayerLerp(2);
+            HandlePlayerLerp(3);
+            HandlePlayerLerp(4);
+            HandlePlayerLerp(5);
+        };
+    };
+    
+    Actions
+    {
+        // The array initialisation in here is quite long and there is probably
+        // a better way to do it, but this is the best I've got for now.
+        // CityArrays are messy, so you want to be as careful as possible with them.
+
+        if (wlCity.IsLoaded())
+        {
+            jAct3.SetValue("Act3_Stage", 1001);
+
+            // Setup Characters
+            caChars = CityArray_Create("Character");
+
+            Character cExt1;
+            Character cExt2;
+            Character cExt3;
+            Character cExt4;
+            Character cExt5;
+            Character cExt6;
+
+            Position pOOB1(0,1000,0);
+            cExt1 = CreateAiCharacter("FrankHoney", "Special", pOOB1, 0);
+            cExt1.SetInvulnerable(true);
+            cExt1.SetAiOverride(true);
+            cExt1.LockInPlace(true);
+            SetCharacterFlags(Character=cExt1, #DontPush, #NoTerrain, #IgnoreGravity);
+
+            Position pOOB2(0,1001,0);
+            cExt2 = CreateAiCharacter("FrankHoney", "Special", pOOB2, 0);
+            cExt2.SetInvulnerable(true);
+            cExt2.SetAiOverride(true);
+            cExt2.LockInPlace(true);
+            SetCharacterFlags(Character=cExt2, #DontPush, #NoTerrain, #IgnoreGravity);
+
+            Position pOOB3(0,1002,0);
+            cExt3 = CreateAiCharacter("FrankHoney", "Special", pOOB3, 0);
+            cExt3.SetInvulnerable(true);
+            cExt3.SetAiOverride(true);
+            cExt3.LockInPlace(true);
+            SetCharacterFlags(Character=cExt3, #DontPush, #NoTerrain, #IgnoreGravity);
+
+            Position pOOB4(0,1003,0);
+            cExt4 = CreateAiCharacter("FrankHoney", "Special", pOOB4, 0);
+            cExt4.SetInvulnerable(true);
+            cExt4.SetAiOverride(true);
+            cExt4.LockInPlace(true);
+            SetCharacterFlags(Character=cExt4, #DontPush, #NoTerrain, #IgnoreGravity);
+
+            Position pOOB5(0,1004,0);
+            cExt5 = CreateAiCharacter("FrankHoney", "Special", pOOB5, 0);
+            cExt5.SetInvulnerable(true);
+            cExt5.SetAiOverride(true);
+            cExt5.LockInPlace(true);
+            SetCharacterFlags(Character=cExt5, #DontPush, #NoTerrain, #IgnoreGravity);
+
+            Position pOOB6(0,1005,0);
+            cExt6 = CreateAiCharacter("FrankHoney", "Special", pOOB6, 0);
+            cExt6.SetInvulnerable(true);
+            cExt6.SetAiOverride(true);
+            cExt6.LockInPlace(true);
+            SetCharacterFlags(Character=cExt6, #DontPush, #NoTerrain, #IgnoreGravity);
+
+            caChars.Add(cExt1);
+            caChars.Add(cExt2);
+            caChars.Add(cExt3);
+            caChars.Add(cExt4);
+            caChars.Add(cExt5);
+            caChars.Add(cExt6);
+
+
+
+            // Initialise Animation States
+            caAnimStates = CityArray_Create("Text");
+
+            caAnimStates.Add("idle");
+            caAnimStates.Add("idle");
+            caAnimStates.Add("idle");
+            caAnimStates.Add("idle");
+            caAnimStates.Add("idle");
+            caAnimStates.Add("idle");
+
+
+
+            // Initialise Lerp -> Previous Positions
+            caPrevPositions = CityArray_Create("Position");
+
+            Position pPrevPosExt1(0,10,0);
+            Position pPrevPosExt2(0,10,0);
+            Position pPrevPosExt3(0,10,0);
+            Position pPrevPosExt4(0,10,0);
+            Position pPrevPosExt5(0,10,0);
+            Position pPrevPosExt6(0,10,0);
+
+            caPrevPositions.Add(pPrevPosExt1);
+            caPrevPositions.Add(pPrevPosExt2);
+            caPrevPositions.Add(pPrevPosExt3);
+            caPrevPositions.Add(pPrevPosExt4);
+            caPrevPositions.Add(pPrevPosExt5);
+            caPrevPositions.Add(pPrevPosExt6);
+
+
+
+            // Initialise Lerp -> New Positions
+            caNewPositions = CityArray_Create("Position");
+
+            Position pNewPosExt1(0,10,0);
+            Position pNewPosExt2(0,10,0);
+            Position pNewPosExt3(0,10,0);
+            Position pNewPosExt4(0,10,0);
+            Position pNewPosExt5(0,10,0);
+            Position pNewPosExt6(0,10,0);
+
+            caNewPositions.Add(pNewPosExt1);
+            caNewPositions.Add(pNewPosExt2);
+            caNewPositions.Add(pNewPosExt3);
+            caNewPositions.Add(pNewPosExt4);
+            caNewPositions.Add(pNewPosExt5);
+            caNewPositions.Add(pNewPosExt6);
+
+
+
+            // Initialise Lerp -> Steps
+            caLerpSteps = CityArray_Create("Number");
+
+            caLerpSteps.Add(0.2);
+            caLerpSteps.Add(0.2);
+            caLerpSteps.Add(0.2);
+            caLerpSteps.Add(0.2);
+            caLerpSteps.Add(0.2);
+            caLerpSteps.Add(0.2);
+
+
+
+            // Initialise Lerp -> Stages (lerp step * num frames since last update, can't describe it easily)
+            caLerpStages = CityArray_Create("Number");
+
+            caLerpStages.Add(0);
+            caLerpStages.Add(0);
+            caLerpStages.Add(0);
+            caLerpStages.Add(0);
+            caLerpStages.Add(0);
+            caLerpStages.Add(0);
+
+
+
+            // Initialise Lerp -> Frame Counters
+            caTickCounters = CityArray_Create("Number");
+
+            caTickCounters.Add(1);
+            caTickCounters.Add(1);
+            caTickCounters.Add(1);
+            caTickCounters.Add(1);
+            caTickCounters.Add(1);
+            caTickCounters.Add(1);
+
+
+
+            // Initialise Vehicles
+            caVehicles = CityArray_Create("Vehicle");
+
+            Vehicle vExt1;
+            Vehicle vExt2;
+            Vehicle vExt3;
+            Vehicle vExt4;
+            Vehicle vExt5;
+            Vehicle vExt6;
+
+            caVehicles.Add(vExt1);
+            caVehicles.Add(vExt2);
+            caVehicles.Add(vExt3);
+            caVehicles.Add(vExt4);
+            caVehicles.Add(vExt5);
+            caVehicles.Add(vExt6);
+
+
+
+            // Initialise Vehicle States
+            caVehicleStates = CityArray_Create("Number");
+
+            caVehicleStates.Add(0);
+            caVehicleStates.Add(0);
+            caVehicleStates.Add(0);
+            caVehicleStates.Add(0);
+            caVehicleStates.Add(0);
+            caVehicleStates.Add(0);
+        };
+        
+    };
+};
+
+
+
+Function GetAnimation(Number anim_id) returns Text
+{
+    Text anim_name("idle");
+
+    if (anim_id == 0) { anim_name = "idle"; }
+    elseif (anim_id == 2) { anim_name = "fall"; }
+    elseif (anim_id == 3) { anim_name = "tiptoe"; }
+    elseif (anim_id == 4) { anim_name = "walk"; }
+    elseif (anim_id == 5) { anim_name = "run"; }
+    elseif (anim_id == 6) { anim_name = "sprint"; }
+    elseif (anim_id == 7) { anim_name = "combatroll_land"; }
+    elseif (anim_id == 8) { anim_name = "fallland"; }
+    elseif (anim_id == 9) { anim_name = "land"; }
+    elseif (anim_id == 10) { anim_name = "wade"; }
+    elseif (anim_id == 11) { anim_name = "swim"; }
+    elseif (anim_id == 12) { anim_name = "teeter"; }
+    elseif (anim_id == 13) { anim_name = "Whistle_Run"; }
+    elseif (anim_id == 14) { anim_name = "Whistle"; }
+    elseif (anim_id == 15) { anim_name = "combatroll_jump"; }
+    elseif (anim_id == 16) { anim_name = "ride_car"; }
+    elseif (anim_id == 17) { anim_name = "Jump_Trampoline"; }
+    elseif (anim_id == 18) { anim_name = ""; }
+    elseif (anim_id == 19) { anim_name = ""; }
+    elseif (anim_id == 20) { anim_name = "Shrug"; }
+    elseif (anim_id == 21) { anim_name = "Jump"; }
+    elseif (anim_id == 22) { anim_name = "idle1"; }
+    elseif (anim_id == 23) { anim_name = "idle2"; }
+    elseif (anim_id == 24) { anim_name = "idle3"; }
+    elseif (anim_id == 25) { anim_name = "DisguiseBooth_idle"; }
+    elseif (anim_id == 26) { anim_name = "DisguiseBooth_in"; }
+    elseif (anim_id == 27) { anim_name = "DisguiseBooth_out"; }
+    elseif (anim_id == 28) { anim_name = "hover"; }
+    elseif (anim_id == 29) { anim_name = "fly"; }
+    elseif (anim_id == 30) { anim_name = "DRC_Intro2"; }
+    elseif (anim_id == 31) { anim_name = "DRC_Outro2"; }
+    elseif (anim_id == 32) { anim_name = "DRC_Idle2"; }
+    elseif (anim_id == 33) { anim_name = ""; }
+    elseif (anim_id == 34) { anim_name = ""; }
+    elseif (anim_id == 35) { anim_name = ""; }
+    elseif (anim_id == 36) { anim_name = ""; }
+    elseif (anim_id == 37) { anim_name = ""; }
+    elseif (anim_id == 38) { anim_name = ""; }
+    elseif (anim_id == 39) { anim_name = ""; }
+    elseif (anim_id == 40) { anim_name = ""; }
+    else { anim_name = "idle"; };
+
+    return anim_name;
+};
+
+
+Function GetDisguiseName(Number pid, Number type) returns Text
+{
+    // IIRC this code to make players 5 and 6 reuse the same disguises as player 1 and 2
+    // is broken, and causes things to break. If you have issues with more than 4 players,
+    // try deleting this if-statement. Make sure to delete the other one in the function below.
+    if (pid > 3)
+    {
+        pid = pid - 4;
+    };
+
+    if (pid == 0)
+    {
+        if (type == 0) { return "BarrySmith"; }
+        elseif (type == 1) { return "FrankHoney"; }
+        elseif (type == 2) { return "RobberG"; }
+        elseif (type == 3) { return "Miner"; }
+        elseif (type == 4) { return "Alien"; }
+        elseif (type == 5) { return "JethroHayes"; }
+        elseif (type == 6) { return "FiremanA"; }
+        elseif (type == 7) { return "Worker"; }
+        else { return "SpecialPlayerFarmer"; };
+    }
+    elseif (pid == 1)
+    {
+        if (type == 0) { return "GrenadierGuard"; }
+        elseif (type == 1) { return "MarionDunby"; }
+        elseif (type == 2) { return "ClownRobber01"; }
+        elseif (type == 3) { return "Manager"; }
+        elseif (type == 4) { return "GreyAlien"; }
+        elseif (type == 5) { return "FarmWorker"; }
+        elseif (type == 6) { return "FiremanB"; }
+        elseif (type == 7) { return "Foreman"; }
+        else { return "SpecialPlayerFarmer"; };
+    }
+    elseif (pid == 2)
+    {
+        if (type == 0) { return "Zombie"; }
+        elseif (type == 1) { return "ElliePhillips"; }
+        elseif (type == 2) { return "ClownRobber02"; }
+        elseif (type == 3) { return "MinerA"; }
+        elseif (type == 4) { return "HenrikKowalski"; }
+        elseif (type == 5) { return "Hillbilly"; }
+        elseif (type == 6) { return "FiremanC"; }
+        elseif (type == 7) { return "ConstructionWorker1"; }
+        else { return "SpecialPlayerFarmer"; };
+    }
+    elseif (pid == 3)
+    {
+        if (type == 0) { return "CaptainBluffbeard"; }
+        elseif (type == 1) { return "DoorlockHomes"; }
+        elseif (type == 2) { return "VinniePappalardo"; }
+        elseif (type == 3) { return "Miner"; }
+        elseif (type == 4) { return "ForrestBlackwellAstronaut"; }
+        elseif (type == 5) { return "FarmerA"; }
+        elseif (type == 6) { return "FiremanD"; }
+        elseif (type == 7) { return "ConstructionWorker4"; }
+        else { return "SpecialPlayerFarmer"; };
+    };
+
+    return "SpecialPlayerFarmer";
+};
+
+
+Function GetDisguiseClass(Number pid, Number type) returns Text
+{
+    // IIRC this code to make players 5 and 6 reuse the same disguises as player 1 and 2
+    // is broken, and causes things to break. If you have issues with more than 4 players,
+    // try deleting this if-statement. Make sure to delete the other one in the function above.
+    if (pid > 3)
+    {
+        pid = pid - 4;
+    };
+
+    if (pid == 0)
+    {
+        if (type == 0) { return "Special"; }
+        elseif (type == 1) { return "Special"; }
+        elseif (type == 2) { return "Criminal"; }
+        elseif (type == 3) { return "Miners"; }
+        elseif (type == 4) { return "Collectable"; }
+        elseif (type == 5) { return "Special"; }
+        elseif (type == 6) { return "Firemen"; }
+        elseif (type == 7) { return "ConstructionWorkers"; }
+        else { return "Special"; };
+    }
+    elseif (pid == 1)
+    {
+        if (type == 0) { return "Collectable"; }
+        elseif (type == 1) { return "Special"; }
+        elseif (type == 2) { return "Criminal"; }
+        elseif (type == 3) { return "Miners"; }
+        elseif (type == 4) { return "Collectable"; }
+        elseif (type == 5) { return "Pedestrian_Farmlands"; }
+        elseif (type == 6) { return "Firemen"; }
+        elseif (type == 7) { return "ConstructionWorkers"; }
+        else { return "Special"; };
+    }
+    elseif (pid == 2)
+    {
+        if (type == 0) { return "Collectable"; }
+        elseif (type == 1) { return "Special"; }
+        elseif (type == 2) { return "Criminal"; }
+        elseif (type == 3) { return "Miners"; }
+        elseif (type == 4) { return "Special"; }
+        elseif (type == 5) { return "Pedestrian_Farmlands"; }
+        elseif (type == 6) { return "Firemen"; }
+        elseif (type == 7) { return "ConstructionWorkers"; }
+        else { return "Special"; };
+    }
+    elseif (pid == 3)
+    {
+        if (type == 0) { return "Special"; }
+        elseif (type == 1) { return "Special"; }
+        elseif (type == 2) { return "Special"; }
+        elseif (type == 3) { return "Miners"; }
+        elseif (type == 4) { return "Special"; }
+        elseif (type == 5) { return "Pedestrian_Farmlands"; }
+        elseif (type == 6) { return "Firemen"; }
+        elseif (type == 7) { return "ConstructionWorkers"; }
+        else { return "Special"; };
+    };
+
+    return "Special";
+};
+
+
+Function Lerp(Position pStartPos, Position pEndPos, Number t) returns Position
+{
+    Number ax;
+    Number ay;
+    Number az;
+
+    ax = pStartPos.GetX();
+    ay = pStartPos.GetY();
+    az = pStartPos.GetZ();
+
+    Number bx;
+    Number by;
+    Number bz;
+
+    bx = pEndPos.GetX();
+    by = pEndPos.GetY();
+    bz = pEndPos.GetZ();
+
+    Number lx;
+    Number ly;
+    Number lz;
+
+    lx = ax + (bx - ax) * t;
+    ly = ay + (by - ay) * t;
+    lz = az + (bz - az) * t;
+
+    Position newPos(lx, ly, lz);
+    return newPos;
+};
+
+
+Function HandlePlayerLerp(Number nPid)
+{
+    Number nLerpStage;
+    Number nLerpStep;
+    Number nTickCount;
+
+    nLerpStage = caLerpStages.Get(nPid);
+    nLerpStep = caLerpSteps.Get(nPid);
+    nTickCount = caTickCounters.Get(nPid);
+
+    nLerpStage = nLerpStage + nLerpStep;
+    nTickCount = nTickCount + 1;
+
+    if (nLerpStage > 1.0)
+    {
+        nLerpStage = 1.0;
+    };
+
+    caLerpStages.Set(nPid, nLerpStage);
+    caTickCounters.Set(nPid, nTickCount);
+
+    Position pLerpPos;
+    Position pPrevPos;
+    Position pNewPos;
+
+    pPrevPos = caPrevPositions.Get(nPid);
+    pNewPos = caNewPositions.Get(nPid);
+    pLerpPos = Lerp(pPrevPos, pNewPos, nLerpStage);
+
+    Character cTemp;
+    cTemp = caChars.Get(nPid);
+    cTemp.Teleport(pLerpPos);
+    caChars.Set(nPid, cTemp);
+
+    Vehicle vTemp;
+    Position pOffsetPos;
+    Number nVehicleState;
+    Number nRot;
+
+    vTemp = caVehicles.Get(nPid);
+    nVehicleState = caVehicleStates.Get(nPid);
+
+    nRot = cTemp.GetDirection();
+    pOffsetPos = ApplyVehicleOffset(nVehicleState, pLerpPos);
+
+    vTemp.Teleport(pOffsetPos, nRot);
+    caVehicles.Set(nPid, vTemp);
+};
+
+
+Function GetVehicleName(Number nId) returns Text
+{
+    Text tName;
+
+    if (nId == 1) { tName = "Hero"; }
+    elseif (nId == 2) { tName = "2016_Guardian"; }
+    elseif (nId == 3) { tName = "Arowana"; }
+    elseif (nId == 4) { tName = "Chopper"; }
+    elseif (nId == 5) { tName = "Hera"; }
+    elseif (nId == 6) { tName = "Camel"; }
+    elseif (nId == 7) { tName = "Responder"; }
+    elseif (nId == 8) { tName = "Cloud"; }
+    elseif (nId == 9) { tName = "Kongamato"; }
+    elseif (nId == 10) { tName = "SkyBringer"; }
+    elseif (nId == 11) { tName = "Swooper"; }
+    elseif (nId == 12) { tName = "UFO"; }
+    elseif (nId == 13) { tName = "Invader"; }
+    elseif (nId == 14) { tName = "Tempest"; }
+    elseif (nId == 15) { tName = "TaxiCab"; }
+    elseif (nId == 16) { tName = "Epona"; }
+    elseif (nId == 17) { tName = "Narym_Mission"; }
+    else { tName = "Hero"; };
+
+    return tName;
+};
+
+
+Function GetVehicleClass(Number nId) returns Text
+{
+    Text tClass;
+
+    if (nId == 1) { tClass = "Enforcer"; }
+    elseif (nId == 2) { tClass = "Enforcer"; }
+    elseif (nId == 3) { tClass = "Naval"; }
+    elseif (nId == 4) { tClass = "Enforcer"; }
+    elseif (nId == 5) { tClass = "Aircraft"; }
+    elseif (nId == 6) { tClass = "Emergency"; }
+    elseif (nId == 7) { tClass = "Enforcer"; }
+    elseif (nId == 8) { tClass = "Aircraft"; }
+    elseif (nId == 9) { tClass = "Aircraft"; }
+    elseif (nId == 10) { tClass = "Enforcer"; }
+    elseif (nId == 11) { tClass = "Aircraft"; }
+    elseif (nId == 12) { tClass = "Aircraft"; }
+    elseif (nId == 13) { tClass = "Aircraft"; }
+    elseif (nId == 14) { tClass = "Uber"; }
+    elseif (nId == 15) { tClass = "Civic"; }
+    elseif (nId == 16) { tClass = "Civic"; }
+    elseif (nId == 17) { tClass = "MuscleCar"; }
+    else { tClass = "Enforcer"; };
+    
+    return tClass;
+};
+
+
+Function ApplyVehicleOffset(Number nId, Position pPosition) returns Position
+{
+    Number x(0); // Having X and Z in this function is redundant because rotation will mess it up
+    Number y(0);
+    Number z(0);
+
+    if (nId == 1) { x = 0; y = -0.08; z = 0; }
+    elseif (nId == 2) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 3) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 4) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 5) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 6) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 7) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 8) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 9) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 10) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 11) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 12) { x = 0; y = -0.60; z = 0; }
+    elseif (nId == 13) { x = 0; y = -0.50; z = 0; }
+    elseif (nId == 14) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 15) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 16) { x = 0; y = -0.10; z = 0; }
+    elseif (nId == 17) { x = 0; y = -0.12; z = 0; }
+    else { x = 0; y = -0.1; z = 0; };
+
+    Number x_orig;
+    Number y_orig;
+    Number z_orig;
+
+    x_orig = pPosition.GetX() + x;
+    y_orig = pPosition.GetY() + y;
+    z_orig = pPosition.GetZ() + z;
+
+    Position pOffsetPos(x_orig, y_orig, z_orig);
+    return pOffsetPos;
+};
+
+
+
+Base();
