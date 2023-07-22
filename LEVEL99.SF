@@ -28,7 +28,7 @@ State Base()
     // Code in a Conditions block is executed repeatadly in an infinite loop.
     Conditions
     {
-		if (PlayerPressedButton("L3")) // ignore this -> was used for debugging purposes to ensure the mod is running and active
+        if (PlayerPressedButton("L3")) // ignore this -> was used for debugging purposes to ensure the mod is running and active
         {
             cPlayer1.SetHealth(#Minus, 1);
         };
@@ -50,22 +50,22 @@ State Base()
         
             // TODO: boats
             // thank you to the random lcu dev who made most of this large if-statement for me
-            if 		( tVehicleClass == "POLICE_CHOPPER" )		        {	nVehicleState = 4;	}
-            elseif	( tVehicleClass == "AIRCRAFT_HERA" )		        {	nVehicleState = 5;	}
-            elseif	( tVehicleClass == "FIRE_CAMEL" )			        {	nVehicleState = 6;	}
-            elseif	( tVehicleClass == "POLICE_RESPONDER" )		        {	nVehicleState = 7;	}
-            elseif	( tVehicleClass == "AIRCRAFT_CLOUD" )		        {	nVehicleState = 8;	}
-            elseif	( tVehicleClass == "AIRCRAFT_KONGAMATO" )	        {	nVehicleState = 9;	}
-            elseif	( tVehicleClass == "UBER_POSEIDON" )		        {	nVehicleState = 1;	}
-            elseif	( tVehicleClass == "POLICE_SKYBRINGER" )	        {	nVehicleState = 10;	}
-            elseif	( tVehicleClass == "HOSPITAL_SWOOPER" )		        {	nVehicleState = 11;	}
-            elseif	( tVehicleClass == "AIRCRAFT_UFO" )			        {	nVehicleState = 12;	}
-            elseif	( tVehicleClass == "AIRCRAFT_JUPITER" )		        {	nVehicleState = 13;	}
-            elseif	( tVehicleClass == "UBER_TEMPEST" )			        {	nVehicleState = 14;	}
-            elseif	( tVehicleClass == "2016_POLICE_GUARDIAN" )	        {	nVehicleState = 2;	}
-            elseif	( tVehicleClass == "CIVIC_TAXICAB" )	            {	nVehicleState = 15;	} 
-            elseif	( tVehicleClass == "CIVIC_EPONA" )	                {	nVehicleState = 16;	} 
-            elseif	( tVehicleClass == "MUSCLECARS_NARYM_MISSION" )	    {	nVehicleState = 17;	} 
+            if         ( tVehicleClass == "POLICE_CHOPPER" )                {    nVehicleState = 4;    }
+            elseif    ( tVehicleClass == "AIRCRAFT_HERA" )                {    nVehicleState = 5;    }
+            elseif    ( tVehicleClass == "FIRE_CAMEL" )                    {    nVehicleState = 6;    }
+            elseif    ( tVehicleClass == "POLICE_RESPONDER" )                {    nVehicleState = 7;    }
+            elseif    ( tVehicleClass == "AIRCRAFT_CLOUD" )                {    nVehicleState = 8;    }
+            elseif    ( tVehicleClass == "AIRCRAFT_KONGAMATO" )            {    nVehicleState = 9;    }
+            elseif    ( tVehicleClass == "UBER_POSEIDON" )                {    nVehicleState = 1;    }
+            elseif    ( tVehicleClass == "POLICE_SKYBRINGER" )            {    nVehicleState = 10;    }
+            elseif    ( tVehicleClass == "HOSPITAL_SWOOPER" )                {    nVehicleState = 11;    }
+            elseif    ( tVehicleClass == "AIRCRAFT_UFO" )                    {    nVehicleState = 12;    }
+            elseif    ( tVehicleClass == "AIRCRAFT_JUPITER" )                {    nVehicleState = 13;    }
+            elseif    ( tVehicleClass == "UBER_TEMPEST" )                    {    nVehicleState = 14;    }
+            elseif    ( tVehicleClass == "2016_POLICE_GUARDIAN" )            {    nVehicleState = 2;    }
+            elseif    ( tVehicleClass == "CIVIC_TAXICAB" )                {    nVehicleState = 15;    } 
+            elseif    ( tVehicleClass == "CIVIC_EPONA" )                    {    nVehicleState = 16;    } 
+            elseif    ( tVehicleClass == "MUSCLECARS_NARYM_MISSION" )        {    nVehicleState = 17;    } 
             else { nVehicleState = 1; };
         
             // Check if player is actually driving, or if they are a passenger
